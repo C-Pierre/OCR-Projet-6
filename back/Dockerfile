@@ -17,5 +17,8 @@ WORKDIR /app
 
 COPY --from=build /app/build/libs/*.war app.war
 
+COPY ./db/docker-entrypoint-init.sh /docker-entrypoint-init.sh
+RUN chmod +x /docker-entrypoint-init.sh
+
 EXPOSE 8080
 ENTRYPOINT ["java","-jar","app.war"]
