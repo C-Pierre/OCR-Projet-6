@@ -39,3 +39,6 @@ out/
 ### OpenAPI Generator ###
 .openapi-generator/
 java-generated/
+
+# Test results files
+test-results/
