@@ -1,0 +1,154 @@
+name: CI - Tests, Build & Release
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_REPO: ocr-projet-6
+
+jobs:
+
+  # JOB TESTS
+  tests:
+    name: Run tests (Back & Front)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Back-end
+      - name: Set up JDK 20
+        if: ${{ hashFiles('back/gradlew') != '' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 20
+          cache: gradle
+
+      # Front-end
+      - name: Set up Node.js
+        if: ${{ hashFiles('front/package.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: front/package-lock.json
+
+      - name: Install Chrome
+        if: ${{ hashFiles('front/package.json') != '' }}
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Run test script
+        run: |
+          chmod +x run-tests.sh
+          ./run-tests.sh
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            back/test-results
+            front/test-results
+
+  # JOB BUILD
+  build:
+    name: Build & Push Docker images
+    runs-on: ubuntu-latest
+    needs: tests
+
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_REPO: ocr-projet-6
+      SHORT_SHA: ${{ github.sha }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set safe Docker variables
+        run: |
+          SAFE_OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          SAFE_BRANCH="${BRANCH//\//-}"
+          echo "SAFE_OWNER=$SAFE_OWNER" >> $GITHUB_ENV
+          echo "SAFE_BRANCH=$SAFE_BRANCH" >> $GITHUB_ENV
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.APP_SECRET }}
+
+      - name: Build & Push Back image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./back
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.SAFE_OWNER }}/${{ env.IMAGE_REPO }}/back:${{ env.SAFE_BRANCH }}-${{ env.SHORT_SHA }}
+
+      - name: Build & Push Front image
+        if: hashFiles('front/Dockerfile*') != ''
+        uses: docker/build-push-action@v5
+        with:
+          context: ./front
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.SAFE_OWNER }}/${{ env.IMAGE_REPO }}/front:${{ env.SAFE_BRANCH }}-${{ env.SHORT_SHA }}
+
+  # JOB RELEASE
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: write
+      packages: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.APP_SECRET }}
+        run: npx semantic-release
+
+      - name: Tag Docker images with semantic version
+        env:
+          REGISTRY: ghcr.io
+          IMAGE_OWNER: ${{ github.repository_owner }}
+          IMAGE_REPO: ocr-projet-6
+          VERSION: ${{ steps.semantic-release.outputs.newReleaseVersion }}
+        run: |
+          echo "Tagging Docker images with version $VERSION"
+          docker login $REGISTRY -u $GITHUB_ACTOR -p ${{ secrets.APP_SECRET }}
+          docker pull $REGISTRY/${IMAGE_OWNER}/${IMAGE_REPO}/back:latest
+          docker tag $REGISTRY/${IMAGE_OWNER}/${IMAGE_REPO}/back:latest $REGISTRY/${IMAGE_OWNER}/${IMAGE_REPO}/back:$VERSION
+          docker push $REGISTRY/${IMAGE_OWNER}/${IMAGE_REPO}/back:$VERSION
+          if [ -d front ]; then
+            docker pull $REGISTRY/${IMAGE_OWNER}/${IMAGE_REPO}/front:latest
+            docker tag $REGISTRY/${IMAGE_OWNER}/${IMAGE_REPO}/front:latest $REGISTRY/${IMAGE_OWNER}/${IMAGE_REPO}/front:$VERSION
+            docker push $REGISTRY/${IMAGE_OWNER}/${IMAGE_REPO}/front:$VERSION
+          fi
