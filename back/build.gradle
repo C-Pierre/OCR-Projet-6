@@ -70,6 +70,12 @@ test {
 	testLogging {
 		events "passed", "skipped", "failed"
 	}
+	reports {
+		junitXml.required = true
+		junitXml.outputLocation = file("${rootDir}/test-results")
+		html.required = true
+		html.outputLocation = file("${rootDir}/test-results")
+	}
 }
 
 war {
