@@ -1,0 +1,6 @@
+services:
+  olympic-angular:
+    build: .
+    container_name: olympic-angular
+    ports:
+      - "8081:80"
