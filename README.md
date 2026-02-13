@@ -21,3 +21,4 @@ Cette commande peut également être exécutée à la racine des dossiers ./back
 ### Exercice 2
 - Commun :
     - Mise en place d'un script `./run-tests.sh` pour l'exécution des tests unifié
+    - Les rapports de tests se trouvents dans les dossiers `test-results` dans `./back` et `./front`
