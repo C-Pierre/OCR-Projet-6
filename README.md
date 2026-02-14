@@ -22,3 +22,8 @@ Cette commande peut également être exécutée à la racine des dossiers ./back
 - Commun :
     - Mise en place d'un script `./run-tests.sh` pour l'exécution des tests unifié
     - Les rapports de tests se trouvents dans les dossiers `test-results` dans `./back` et `./front`
+
+### Corrections
+- CI :
+    - Le stage de tests avait été supprimé par erreur.
+    - Cash : optimisation de la mise en cache des éléments, comme les paquets npm ou le package.json

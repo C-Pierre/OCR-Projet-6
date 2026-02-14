@@ -22,16 +22,25 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: Setup Node.js
+      - name: Setup Node.js with cache
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      
+      - name: Cache node_modules for commitlint
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-commitlint-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-commitlint-
       
       - name: Install commitlint
         run: |
           npm install --save-dev @commitlint/cli @commitlint/config-conventional
       
-      # Pour les Pull Requests : valide tous les commits de la PR
       - name: Validate PR commits
         if: github.event_name == 'pull_request'
         run: |
@@ -41,7 +50,6 @@ jobs:
             --to ${{ github.event.pull_request.head.sha }} \
             --verbose
       
-      # Pour les Push : valide uniquement le dernier commit
       - name: Validate last commit
         if: github.event_name == 'push'
         run: |
@@ -55,9 +63,125 @@ jobs:
     runs-on: ubuntu-latest
     needs: commitlint
     
+    permissions:
+      contents: read
+      checks: write
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # BACK-END TESTS
+      - name: Set up JDK 20
+        if: hashFiles('back/gradlew') != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 20
+          cache: gradle
+
+      - name: Cache Gradle packages
+        if: hashFiles('back/gradlew') != ''
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Grant execute permission for gradlew
+        if: hashFiles('back/gradlew') != ''
+        run: chmod +x back/gradlew
+
+      - name: Run Back-end tests
+        if: hashFiles('back/gradlew') != ''
+        run: |
+          chmod +x run-tests.sh
+          ./run-tests.sh
+          echo "[SUCCES] - Back-end tests completed"
+
+      - name: Generate Back-end test report
+        if: always() && hashFiles('back/gradlew') != ''
+        uses: dorny/test-reporter@v1
+        with:
+          name: Back-end Tests
+          path: back/test-results/*.xml
+          reporter: java-junit
+          fail-on-error: true
+
+      # FRONT-END TESTS
+      - name: Set up Node.js with cache
+        if: hashFiles('front/package.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: front/package-lock.json
+
+      - name: Cache node_modules
+        if: hashFiles('front/package.json') != ''
+        uses: actions/cache@v4
+        with:
+          path: front/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('front/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install front-end dependencies
+        if: hashFiles('front/package.json') != ''
+        run: |
+          cd front
+          npm ci --prefer-offline
+
+      - name: Run Front-end tests
+        if: hashFiles('front/package.json') != ''
+        run: |
+          chmod +x run-tests.sh
+          ./run-tests.sh
+          echo "[SUCCES] - Front-end tests completed"
+
+      - name: Generate Front-end test report
+        if: always() && hashFiles('front/package.json') != ''
+        uses: dorny/test-reporter@v1
+        with:
+          name: Front-end Tests
+          path: front/test-results/*.xml
+          reporter: java-junit
+          fail-on-error: true
+
+      # CODE COVERAGE
+      - name: Upload Back-end coverage to Codecov
+        if: hashFiles('back/gradlew') != ''
+        uses: codecov/codecov-action@v4
+        with:
+          files: back/build/reports/jacoco/test/jacocoTestReport.xml
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
+
+      - name: Upload Front-end coverage to Codecov
+        if: hashFiles('front/package.json') != ''
+        uses: codecov/codecov-action@v4
+        with:
+          files: front/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+          fail_ci_if_error: false
+
+      # ARTIFACTS
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            back/test-results
+            back/reports
+            front/test-results
+            front/coverage
+          retention-days: 30
 
   # JOB BUILD
   build:
@@ -113,6 +237,7 @@ jobs:
           labels: ${{ steps.meta-back.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          platforms: linux/amd64
 
       - name: Extract metadata for Front image
         if: hashFiles('front/Dockerfile*') != ''
@@ -133,6 +258,7 @@ jobs:
           labels: ${{ steps.meta-front.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          platforms: linux/amd64
 
   # JOB RELEASE
   release:
@@ -155,17 +281,26 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Set up Node.js
+      - name: Setup Node.js with cache
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Cache node_modules for semantic-release
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-semantic-release-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-semantic-release-
 
       - name: Install semantic-release dependencies
         run: |
           npm install --save-dev \
             semantic-release@^22.0.0 \
             @semantic-release/changelog@^6.0.0 \
-            @semantic-release/git@^10.0.0 \
             @semantic-release/github@^9.0.0
 
       - name: Run semantic-release
@@ -206,7 +341,7 @@ jobs:
           
           docker push ${{ env.REGISTRY }}/${{ env.SAFE_OWNER }}/${{ env.IMAGE_REPO }}/back:$VERSION
           docker push ${{ env.REGISTRY }}/${{ env.SAFE_OWNER }}/${{ env.IMAGE_REPO }}/back:latest
-          echo "Back image tagged successfully"
+          echo "[SUCCES] - Back image tagged successfully"
           
           # Taguer l'image front (si elle existe)
           echo "Checking for front image..."
@@ -219,9 +354,9 @@ jobs:
             
             docker push ${{ env.REGISTRY }}/${{ env.SAFE_OWNER }}/${{ env.IMAGE_REPO }}/front:$VERSION
             docker push ${{ env.REGISTRY }}/${{ env.SAFE_OWNER }}/${{ env.IMAGE_REPO }}/front:latest
-            echo "Front image tagged successfully"
+            echo "[SUCCES] - Front image tagged successfully"
           else
-            echo "Front image not found, skipping..."
+            echo "[SUCCES] - Front image not found, skipping..."
           fi
           
-          echo "All images tagged with version $VERSION"
+          echo "[SUCCES] - All images tagged with version $VERSION"
