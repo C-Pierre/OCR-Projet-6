@@ -26,18 +26,24 @@ module.exports = function (config) {
       suppressAll: true // removes the duplicated traces
     },
     coverageReporter: {
-      dir: require('path').join(__dirname, './coverage/olympic-games-starter'),
+      dir: require('path').join(__dirname, './coverage'),
       subdir: '.',
       reporters: [
         { type: 'html' },
-        { type: 'text-summary' }
+        { type: 'text-summary' },
+        { type: 'lcovonly' }
       ]
     },
-    reporters: ['progress', 'junit'],
+    reporters: ['progress', 'kjhtml', 'junit', 'coverage'],
     junitReporter: {
       outputDir: 'test-results',
       outputFile: 'junit.xml',
-      useBrowserName: false
+      useBrowserName: false,
+      suite: '',
+      nameFormatter: undefined,
+      classNameFormatter: undefined,
+      properties: {},
+      xmlVersion: null
     },
     port: 9876,
     colors: true,
