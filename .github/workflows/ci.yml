@@ -1,4 +1,4 @@
-name: CI - Tests, Build & Release
+name: CI - ConventionnalCommits, Tests, Build & Release
 
 on:
   push:
