@@ -12,12 +12,12 @@
 
 * add ci tests stage and caching ([b83f459](https://github.com/C-Pierre/OCR-Projet-6/commit/b83f4591211ad280927c7720258cf72a018f5744))
 
-# 1.0.0 (2026-02-14)
+# [1.0.0] (2026-02-14)
 
 
 ### Features
 
-* project 6 | exercice 1 | back | docker : conteneurisation ([fa9cb8a](https://github.com/C-Pierre/OCR-Projet-6/commit/fa9cb8a20b34de3e5f8ddc77827d7bd9369eafa3))
+* projet 6 | exercice 1 | back | docker : conteneurisation ([fa9cb8a](https://github.com/C-Pierre/OCR-Projet-6/commit/fa9cb8a20b34de3e5f8ddc77827d7bd9369eafa3))
 * projet 6 | exercice 1 | common | docker : conteneurisation ([e41d62f](https://github.com/C-Pierre/OCR-Projet-6/commit/e41d62f70b460510342a203a7d3732b0d9339bb6))
 * projet 6 | exercice 1 | front | docker : conteneurisation ([22f1069](https://github.com/C-Pierre/OCR-Projet-6/commit/22f10693cd8ff5af296f78f9292033b0b601305f))
 * projet 6 | exercice 2 | common : conventionnal commit + github token ([41c565d](https://github.com/C-Pierre/OCR-Projet-6/commit/41c565d1d094cd8c68bdede8ec76e29a2fb984c2))
