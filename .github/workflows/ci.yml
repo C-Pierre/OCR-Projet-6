@@ -260,7 +260,7 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64
 
-  # JOB RELEASE
+# JOB RELEASE
   release:
     name: Semantic Release
     runs-on: ubuntu-latest
@@ -305,18 +305,22 @@ jobs:
 
       - name: Run semantic-release
         id: semantic
+        uses: cycjimmy/semantic-release-action@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
+        with:
+          extra_plugins: |
+            @semantic-release/changelog@^6.0.0
+            @semantic-release/github@^9.0.0
 
       - name: Set safe Docker variables
-        if: steps.semantic.outputs.new-release-published == 'true'
+        if: steps.semantic.outputs.new_release_published == 'true'
         run: |
           SAFE_OWNER="${GITHUB_REPOSITORY_OWNER,,}"
           echo "SAFE_OWNER=$SAFE_OWNER" >> $GITHUB_ENV
 
       - name: Login to GitHub Container Registry
-        if: steps.semantic.outputs.new-release-published == 'true'
+        if: steps.semantic.outputs.new_release_published == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -324,9 +328,9 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Tag Docker images with semantic version
-        if: steps.semantic.outputs.new-release-published == 'true'
+        if: steps.semantic.outputs.new_release_published == 'true'
         env:
-          VERSION: ${{ steps.semantic.outputs.release-version }}
+          VERSION: ${{ steps.semantic.outputs.new_release_version }}
         run: |
           echo "Tagging Docker images with version: $VERSION"
           
@@ -341,7 +345,7 @@ jobs:
           
           docker push ${{ env.REGISTRY }}/${{ env.SAFE_OWNER }}/${{ env.IMAGE_REPO }}/back:$VERSION
           docker push ${{ env.REGISTRY }}/${{ env.SAFE_OWNER }}/${{ env.IMAGE_REPO }}/back:latest
-          echo "[SUCCES] - Back image tagged successfully"
+          echo "[SUCCESS] -Back image tagged successfully"
           
           # Taguer l'image front (si elle existe)
           echo "Checking for front image..."
@@ -354,9 +358,9 @@ jobs:
             
             docker push ${{ env.REGISTRY }}/${{ env.SAFE_OWNER }}/${{ env.IMAGE_REPO }}/front:$VERSION
             docker push ${{ env.REGISTRY }}/${{ env.SAFE_OWNER }}/${{ env.IMAGE_REPO }}/front:latest
-            echo "[SUCCES] - Front image tagged successfully"
+            echo "[SUCCESS] -Front image tagged successfully"
           else
-            echo "[SUCCES] - Front image not found, skipping..."
+            echo "[SUCCESS] - Front image not found, skipping..."
           fi
           
-          echo "[SUCCES] - All images tagged with version $VERSION"
+          echo "[SUCCESS] -All images tagged with version $VERSION"
