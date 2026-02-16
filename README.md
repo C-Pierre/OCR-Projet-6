@@ -22,6 +22,7 @@ Cette commande peut également être exécutée à la racine des dossiers ./back
 - Commun :
     - Mise en place d'un script `./run-tests.sh` pour l'exécution des tests unifié
     - Les rapports de tests se trouvents dans les dossiers `test-results` dans `./back` et `./front`
+    - Les rapports de tests sont également créés au moment de la CI et disponible dans les informations de la MR.
 
 ### Corrections
 - CI :
