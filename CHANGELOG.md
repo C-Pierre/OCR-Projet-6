@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/C-Pierre/OCR-Projet-6/compare/v1.0.1...v1.0.2) (2026-02-16)
+
+
+### Bug Fixes
+
+* semantic release docker image tag stage ([39d777c](https://github.com/C-Pierre/OCR-Projet-6/commit/39d777cda3485abf5e34baa3ccef393980ec1a6f))
+
 ## [1.0.1](https://github.com/C-Pierre/OCR-Projet-6/compare/v1.0.0...v1.0.1) (2026-02-16)
 
 
