@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/C-Pierre/OCR-Projet-6/compare/v1.0.0...v1.0.1) (2026-02-16)
+
+
+### Bug Fixes
+
+* add ci tests stage and caching ([b83f459](https://github.com/C-Pierre/OCR-Projet-6/commit/b83f4591211ad280927c7720258cf72a018f5744))
+
 # 1.0.0 (2026-02-14)
 
 
